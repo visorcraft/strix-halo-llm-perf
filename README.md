@@ -117,6 +117,10 @@ Practical takeaway: **ROCm often leads on pp**, while **Vulkan RADV is usually b
 - **Optimization ablation:** speculative decoding, unified KV flags, no-mmap, and batch-size tuning produced negligible gains in this setup.
 - **120W vs 85W:** 120W generally helps 7B+ models; very small models are often bandwidth-limited and see little benefit.
 - **Qwen3.5-397B stability can be prompt-shape sensitive:** on `np4_ps32k`, a synthetic repeated-token pattern crashed immediately while an `opt`-shaped prompt passed at 5k, 20k, and ~32k prompt tokens. See [`results/2026-02-20_qwen397b-prompt-shape-sensitivity.md`](results/2026-02-20_qwen397b-prompt-shape-sensitivity.md).
+- **Qwen3.5-397B max context found:**
+  - `np=1`: ctx 300k with ~150k prompt tokens ✅
+  - `np=2`: ctx 200k with ~100k prompt tokens ✅
+  - See [`results/2026-02-20_qwen397b-np1-max-context.md`](results/2026-02-20_qwen397b-np1-max-context.md) and [`results/2026-02-20_qwen397b-np2-high-context.md`](results/2026-02-20_qwen397b-np2-high-context.md).
 
 ## 8) Known Issues
 
