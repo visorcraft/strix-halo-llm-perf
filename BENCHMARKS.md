@@ -553,3 +553,40 @@ All tests: 2/2 attempts passed, no memory faults, server stable.
 - All tests used stable `opt` prompt shape; synthetic patterns can crash
 
 See detailed results in `results/2026-02-20_qwen397b-np1-max-context.md` and `results/2026-02-20_qwen397b-np2-high-context.md`.
+
+## 2026-02-21 — RPC Stability Follow-up (Qwen vs MiniMax)
+
+### Qwen3.5-397B Control (np2, ctx200k)
+
+Artifact: `/tmp/idlehands_optimizing/qwen397b_control_shapes_np2_v2_20260220_233624.json`
+
+| Target | Shape | Calibrated | Result |
+|---:|---|---:|---|
+| 70k | opt | 69,970 | ✅ PASS (2/2) |
+| 70k | mixed | 69,940 | ❌ FAIL (server drop) |
+| 90k | opt | 89,970 | ✅ PASS (2/2) |
+| 90k | mixed | 89,929 | ❌ FAIL (`Memory access fault by GPU node-1`) |
+
+Interpretation: this path is not shape-agnostic at high context.
+
+### MiniMax Shape Screen (np2)
+
+Artifact: `/tmp/idlehands_optimizing/minimax_shape_screen_np2_v2_20260221_064746.json`
+
+| Model | ctx | Targets | Shapes | Result |
+|---|---:|---|---|---|
+| MiniMax REAP Q8 | 100k | 45k, 48k | opt + natural | ✅ 4/4 PASS |
+| MiniMax M2.5 Q3_K_M | 200k | 70k, 90k | opt + natural | ✅ 4/4 PASS |
+
+Overall: **8/8 PASS**, no memory-fault signature in this matrix.
+
+### MiniMax M2.5 Q3_K_M High-Edge (np2, ctx256k)
+
+Artifact: `/tmp/idlehands_optimizing/minimax_q3km_np2_256k_128k_20260221_084549.json`
+
+| Shape | Target | Calibrated | Attempt 1 | Attempt 2 | Result |
+|---|---:|---:|---:|---:|---|
+| opt | 127,900 | 127,899 | 1103.71s | 32.90s | ✅ PASS |
+| natural | 127,900 | 127,873 | 1318.50s | 1320.51s | ✅ PASS |
+
+Takeaway: MiniMax Q3_K_M successfully handled ~128k prompt tokens at `np2 ctx256k` for both tested prompt families.

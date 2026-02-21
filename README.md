@@ -121,6 +121,11 @@ Practical takeaway: **ROCm often leads on pp**, while **Vulkan RADV is usually b
   - `np=1`: ctx 300k with ~150k prompt tokens ✅
   - `np=2`: ctx 200k with ~100k prompt tokens ✅
   - See [`results/2026-02-20_qwen397b-np1-max-context.md`](results/2026-02-20_qwen397b-np1-max-context.md) and [`results/2026-02-20_qwen397b-np2-high-context.md`](results/2026-02-20_qwen397b-np2-high-context.md).
+- **Qwen3.5-397B RPC caveat:** at `np2 ctx200k`, `opt` prompts passed (70k/90k) while mixed prompts failed (including GPU memory fault). See [`results/2026-02-21_qwen397b-rpc-shape-control.md`](results/2026-02-21_qwen397b-rpc-shape-control.md).
+- **MiniMax RPC stability update:**
+  - Shape screen passed **8/8** (Q8 at 45k/48k, Q3_K_M at 70k/90k; opt + natural)
+  - High-edge test passed at `np2 ctx256k` with ~`128k` prompt tokens (opt + natural)
+  - See [`results/2026-02-21_minimax-rpc-shape-screen.md`](results/2026-02-21_minimax-rpc-shape-screen.md) and [`results/2026-02-21_minimax-q3km-np2-256k-128k.md`](results/2026-02-21_minimax-q3km-np2-256k-128k.md).
 
 ## 8) Known Issues
 
