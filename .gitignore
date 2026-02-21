@@ -1,0 +1,20 @@
+# local benchmark artifacts
+*.log
+*.jsonl
+*.tsv
+*.trace
+*.out
+*.tmp
+bench-runs/
+logs/
+artifacts/
+forensics/
+
+# secrets / local credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.kdbx
+known_hosts*
