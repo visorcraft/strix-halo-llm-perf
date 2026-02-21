@@ -524,3 +524,32 @@ A targeted A/B run on Bee+Evo (`--ctx-size 131072 -np 4`, HIP+RPC, `-dio`) showe
 This explains earlier contradictory runs (baseline matrix pass vs staircase/ceiling fail): synthetic prompt shape can trigger a crash path even at moderate token counts.
 
 Detailed write-up: `results/2026-02-20_qwen397b-prompt-shape-sensitivity.md`
+
+## Qwen3.5-397B High-Context Results (2026-02-20)
+
+### np=1 Max Context
+
+| ctx_size | target_tokens | prompt_tokens | Status | Latency (1st) |
+|----------|---------------|---------------|--------|---------------|
+| 150000 | 75000 | 75010 | ✅ PASS | 417.9s |
+| 200000 | 100000 | 100010 | ✅ PASS | 636.2s |
+| 250000 | 125000 | 125004 | ✅ PASS | 894.2s |
+| **300000** | **150000** | **150010** | **✅ PASS** | **1193.4s** |
+
+All tests: 2/2 attempts passed, no memory faults, server stable.
+
+### np=2 High Context
+
+| ctx_size | target_tokens | prompt_tokens | Status |
+|----------|---------------|---------------|--------|
+| 256000 | 128000 | — | FAIL (exceed_ctx) |
+| **200000** | **100000** | **100010** | **✅ PASS** |
+
+### Key Takeaways
+
+- **Single-slot (`-np 1`)** can handle up to **300k context with ~150k prompt tokens**
+- **Dual-slot (`-np 2`)** validated at **200k context with ~100k prompt tokens**
+- Latency scales linearly with prompt size; second request (cached) is 5–8s
+- All tests used stable `opt` prompt shape; synthetic patterns can crash
+
+See detailed results in `results/2026-02-20_qwen397b-np1-max-context.md` and `results/2026-02-20_qwen397b-np2-high-context.md`.
