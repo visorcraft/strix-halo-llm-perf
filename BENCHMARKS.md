@@ -590,3 +590,44 @@ Artifact: `/tmp/idlehands_optimizing/minimax_q3km_np2_256k_128k_20260221_084549.
 | natural | 127,900 | 127,873 | 1318.50s | 1320.51s | ✅ PASS |
 
 Takeaway: MiniMax Q3_K_M successfully handled ~128k prompt tokens at `np2 ctx256k` for both tested prompt families.
+
+## 2026-02-25 — ROCm Backend Comparison: Qwen3-Coder-Next Q6_K_XL
+
+Fresh benchmarks on Bee (single host) comparing all available ROCm backends after updating llama.cpp to `3769fe6e` (visorcraft fork) and refreshing all kyuz0 toolbox containers to latest images.
+
+**Model:** Qwen3-Coder-Next UD Q6_K_XL (63.87 GiB, 79.67B params, MoE 80B-A3B)
+**Host:** Bee (Beelink GTR9 Pro, Ryzen AI Max+ 395, 128 GB)
+**Benchmark:** `llama-bench -m <model> --n-gpu-layers 99 -p 512 -n 128` (warmup + measured)
+
+### Single Host Results
+
+| Backend | ROCm Version | Build | pp512 (t/s) | tg128 (t/s) |
+|---|---|---|---:|---:|
+| Host (build-rpc-hip-v2) | 6.4.2 (HIP 6.4.43484) | 3769fe6e (58) | 496.38 ± 4.27 | 31.92 ± 0.01 |
+| Container (kyuz0) | 6.4.4 | 832aa947 (8155) | 481.40 ± 17.24 | 31.90 ± 0.01 |
+| **Container (kyuz0)** | **7.2** | **832aa947 (8155)** | **487.41 ± 6.74** | **33.19 ± 0.01** |
+| **Container (kyuz0)** | **7.0 nightlies** | **832aa947 (8155)** | **491.42 ± 2.91** | **33.26 ± 0.01** |
+
+### RPC Results (Bee + Evo, tensor-split 1/1)
+
+RPC server on Evo: `build-rpc-hip` binary, host ROCm 6.4.2, `10.10.25.1:50052`.
+
+| Client Backend | ROCm Version | pp512 (t/s) | tg128 (t/s) |
+|---|---|---:|---:|
+| Host (build-rpc-hip-v2) | 6.4.2 | 484.53 ± 3.20 | 25.79 ± 0.17 |
+| Container (kyuz0) | 6.4.4 | 487.97 ± 2.86 | 26.03 ± 0.18 |
+| Container (kyuz0) | 7.2 | 486.77 ± 4.23 | 26.31 ± 0.17 |
+| Container (kyuz0) | 7.0 nightlies | 489.61 ± 3.38 | 26.27 ± 0.21 |
+
+### Analysis
+
+- **ROCm 7.x wins tg on single host:** +4% over 6.4.x (33.2 vs 31.9 t/s)
+- **ROCm 7.x wins tg on RPC:** +2% over 6.4.x (26.3 vs 25.8 t/s)
+- **pp is a wash** across all backends (~481–496 t/s, within noise)
+- **ROCm 7.2 and 7.0 nightlies are interchangeable** for this model
+- **Single host >> RPC** for Q6_K_XL: 33.2 vs 26.3 t/s — model fits in 128 GB, RPC overhead hurts
+- **Compared to Q4_K_M Vulkan RADV** (42.7 t/s from earlier benchmarks): Q6_K_XL ROCm is ~22% slower on tg (33.3 vs 42.7) but uses higher-quality quantization
+
+### Decision
+
+Switched all IdleHands runtime configurations to use `rocm7-nightlies` container via `pick.sh` backend selector script (see `scripts/pick.sh`).

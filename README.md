@@ -33,8 +33,8 @@ Benchmarks and reproducible setup notes for local and distributed LLM inference 
 
 - **OS:** Fedora 43 (both hosts)
 - **Kernel:** 6.18.x class
-- **Primary backend:** Vulkan RADV (Mesa)
-- **Secondary backend:** ROCm (containerized variants for comparison)
+- **Primary backend:** ROCm 7.0 nightlies (via kyuz0 distrobox container)
+- **Secondary backends:** Vulkan RADV (Mesa), ROCm 6.4.x (host), ROCm 7.2 (container)
 - **Inference engine:** `llama.cpp`
 - **Power profile:** 85W/120W tested; 120W usually wins for 7B+ models
 
@@ -86,11 +86,15 @@ Winners-only view:
 
 | Model | Best Prompt Processing (pp) | Best Generation (tg) |
 |---|---|---|
+| Qwen3-Coder-Next Q6_K_XL (single host) | Host ROCm 6.4.2 (~496 pp) | ROCm 7.x container (~33.3 tg) |
+| Qwen3-Coder-Next Q6_K_XL (RPC 2-host) | ROCm 7.0 nightlies (~490 pp) | ROCm 7.x container (~26.3 tg) |
 | Qwen3-Coder-Next 80B-A3B Q4_K_M | ROCm 6.4.4 (~581 pp) | Vulkan RADV (~43.5 tg) |
 | MiniMax M2.5 Q3_K_M | ROCm 6.4.4/7.x (~214 pp) | Vulkan RADV (~34.3 tg) |
 | Qwen3 30B-A3B MoE Q4_K_M | Vulkan RADV | Vulkan RADV |
 
-Practical takeaway: **ROCm often leads on pp**, while **Vulkan RADV is usually better for interactive tg**.
+**Latest finding (Feb 25, 2026):** ROCm 7.x containers provide **+4% tg** over ROCm 6.4.x for Qwen3-Coder-Next Q6_K_XL. All production runtimes switched to `rocm7-nightlies` via `scripts/pick.sh`.
+
+Practical takeaway: **ROCm 7.x nightlies is the best all-round backend for HIP models.** Vulkan RADV remains competitive for Q4_K_M quants.
 
 ## 6) Distributed Inference (Evo + Bee RPC)
 
