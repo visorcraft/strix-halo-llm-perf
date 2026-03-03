@@ -156,6 +156,7 @@ Results are broadly aligned with community trends: backend wins vary by metric/m
 - [docs/rpc-build.md](docs/rpc-build.md) — distributed Vulkan RPC build flow
 - [docs/rpc-hip-serving.md](docs/rpc-hip-serving.md) — RPC HIP serving guide (`-dio` requirement)
 - [docs/build-visorcraft-llama.md](docs/build-visorcraft-llama.md) — build and verify visorcraft/llama.cpp on host + containers
+- [docs/build-rpc-hip-v2-vs-host-native-radv.md](docs/build-rpc-hip-v2-vs-host-native-radv.md) — separate side-by-side guide for `build-rpc-hip-v2` vs host-native Vulkan RADV
 
 ## 11) Repo Hygiene / Sanitization
 
