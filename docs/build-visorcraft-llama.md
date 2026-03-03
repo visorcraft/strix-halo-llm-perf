@@ -1,15 +1,27 @@
-# Build Guide: visorcraft/llama.cpp (Host + kyuz0 Containers)
+# Fastest Host-Native Build Guide: visorcraft/llama.cpp (HIP RPC)
 
-This guide shows how to build **your fork** (`https://github.com/visorcraft/llama.cpp.git`) so benchmarks and serving use your exact source revision.
+This guide is the **fast host-native path** for building and running `visorcraft/llama.cpp` on Linux.
 
-It covers:
-- Host-native builds (HIP / Vulkan)
-- Builds inside kyuz0 distrobox containers (`llama-vulkan-radv`, `llama-vulkan-amdvlk`, `llama-rocm-*`)
-- How to verify the build revision shown by `llama-bench`
+Use this when you want the same style of runtime as:
+- `build-rpc-hip-v2/bin/llama-server`
+- large-context serving
+- high throughput with HIP + RPC support enabled
+
+All paths below are generic (no personal usernames).
 
 ---
 
-## 1) Sync the source on host
+## 1) Prerequisites
+
+Install:
+- `git`
+- `cmake`
+- C/C++ toolchain (`gcc`, `g++`, `make` or `ninja`)
+- ROCm/HIP toolchain and runtime
+
+---
+
+## 2) Pull latest visorcraft fork
 
 ```bash
 cd ~/llama.cpp
@@ -26,12 +38,11 @@ git rev-parse --short HEAD
 
 ---
 
-## 2) Build on host (examples)
-
-### HIP + RPC + server
+## 3) Fast host-native build (HIP + RPC + server)
 
 ```bash
 cd ~/llama.cpp
+
 cmake -S . -B build-rpc-hip-v2 \
   -DGGML_HIP=ON \
   -DGGML_RPC=ON \
@@ -41,128 +52,79 @@ cmake -S . -B build-rpc-hip-v2 \
 cmake --build build-rpc-hip-v2 --config Release -j "$(nproc)"
 ```
 
-### Vulkan + server
+---
+
+## 4) Run llama-server (template command)
 
 ```bash
-cd ~/llama.cpp
-cmake -S . -B build-visor-vulkan-host \
-  -DGGML_VULKAN=ON \
-  -DLLAMA_BUILD_SERVER=ON \
-  -DCMAKE_BUILD_TYPE=Release
-
-cmake --build build-visor-vulkan-host --config Release -j "$(nproc)"
+~/llama.cpp/build-rpc-hip-v2/bin/llama-server \
+  -m ~/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
+  --port 8082 \
+  --host 0.0.0.0 \
+  --chat-template-file ~/.idlehands/templates/qwen3.jinja \
+  --jinja \
+  -ngl 99 \
+  -fa on \
+  -np 4 \
+  -c 800000 \
+  -cb \
+  -ctk q4_0 \
+  -ctv q4_0 \
+  --ctx-checkpoints 0 \
+  --cache-reuse 64 \
+  --no-warmup \
+  --slots \
+  -dio
 ```
 
 ---
 
-## 3) Build inside kyuz0 containers
-
-> Containers share your home directory, so `/home/thomas/llama.cpp` is visible inside each container.
-
-### Ensure containers are running
+## 5) Run in background + log file
 
 ```bash
-podman start \
-  llama-vulkan-radv \
-  llama-vulkan-amdvlk \
-  llama-rocm-6.4.4 \
-  llama-rocm-7.2 \
-  llama-rocm7-nightlies
+nohup ~/llama.cpp/build-rpc-hip-v2/bin/llama-server \
+  -m ~/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
+  --port 8082 --host 0.0.0.0 \
+  --chat-template-file ~/.idlehands/templates/qwen3.jinja --jinja \
+  -ngl 99 -fa on -np 4 -c 800000 -cb \
+  -ctk q4_0 -ctv q4_0 \
+  --ctx-checkpoints 0 --cache-reuse 64 --no-warmup --slots -dio \
+  > ~/llama.cpp/build-rpc-hip-v2/llama-server.log 2>&1 < /dev/null &
 ```
 
-### Vulkan RADV container
+Check:
 
 ```bash
-podman exec llama-vulkan-radv bash -lc '
-  cd /home/thomas/llama.cpp
-  cmake -S . -B build-visor-vulkan-radv \
-    -DGGML_VULKAN=ON \
-    -DLLAMA_BUILD_SERVER=ON \
-    -DCMAKE_BUILD_TYPE=Release
-  cmake --build build-visor-vulkan-radv --config Release -j "$(nproc)"
-'
-```
-
-### Vulkan AMDVLK container
-
-```bash
-podman exec llama-vulkan-amdvlk bash -lc '
-  cd /home/thomas/llama.cpp
-  cmake -S . -B build-visor-vulkan-amdvlk \
-    -DGGML_VULKAN=ON \
-    -DLLAMA_BUILD_SERVER=ON \
-    -DCMAKE_BUILD_TYPE=Release
-  cmake --build build-visor-vulkan-amdvlk --config Release -j "$(nproc)"
-'
-```
-
-### ROCm 6.4.4 container (works with full HIP toolchain)
-
-```bash
-podman exec llama-rocm-6.4.4 bash -lc '
-  cd /home/thomas/llama.cpp
-  cmake -S . -B build-visor-rocm-6.4.4 \
-    -DGGML_HIP=ON \
-    -DGGML_RPC=ON \
-    -DLLAMA_BUILD_SERVER=ON \
-    -DCMAKE_BUILD_TYPE=Release
-  cmake --build build-visor-rocm-6.4.4 --config Release -j "$(nproc)"
-'
+pgrep -af "build-rpc-hip-v2/bin/llama-server"
+ss -ltnp | grep ":8082"
+tail -n 50 ~/llama.cpp/build-rpc-hip-v2/llama-server.log
 ```
 
 ---
 
-## 4) Verify which revision a binary was built from
-
-Run any built `llama-bench` and check the final `build:` line:
+## 6) Verify build revision used by binary
 
 ```bash
-/home/thomas/llama.cpp/build-visor-vulkan-radv/bin/llama-bench \
-  -m /home/thomas/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
-  --n-gpu-layers 99 -p 1 -n 1 -r 1
+~/llama.cpp/build-rpc-hip-v2/bin/llama-bench \
+  -m ~/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
+  -ngl 99 -p 1 -n 1 -r 1
 ```
 
-Example output tail:
+Look for the final line:
 
 ```text
-build: 53f151590 (105)
+build: <commit> (<build-number>)
 ```
 
-That means the binary itself was compiled from commit `53f151590`.
+That line is the exact source revision for the binary you ran.
 
 ---
 
-## 5) Why did a previous run show `f0603802` instead of `53f151590`?
+## 7) Why build IDs can differ (example: `f0603802` vs `53f151590`)
 
-Because the binary path was different.
+Different binary paths can point to different source trees/builds.
 
-- `f0603802` came from an older local tree at `/tmp/llama-vulkan/...`.
-- `53f151590` comes from your synced fork at `~/llama.cpp/...`.
+- Example older path: `/tmp/llama-vulkan/...` (older build id)
+- Current host-native path: `~/llama.cpp/build-rpc-hip-v2/...` (current build id)
 
-If you change the binary path, you may change the source revision used in tests.
-
----
-
-## 6) Recommended benchmark command (container Vulkan)
-
-```bash
-podman exec llama-vulkan-radv bash -lc '
-  /home/thomas/llama.cpp/build-visor-vulkan-radv/bin/llama-bench \
-    -m /home/thomas/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
-    --n-gpu-layers 99 -p 512 -n 128 -r 3
-'
-```
-
-Use the equivalent `build-visor-vulkan-amdvlk` path in the AMDVLK container.
-
----
-
-## 7) Notes on ROCm 7.x containers
-
-Some ROCm 7.x toolbox images may not include a complete HIP compile toolchain by default (or may have CMake/HIP detection incompatibilities).
-
-If HIP builds fail there, this is usually a toolchain-image issue, not a `llama.cpp` source issue.
-
-In that case:
-- Use host HIP build or ROCm 6.4.4 container for source builds, and/or
-- Use container prebuilt binaries for runtime-only testing.
+If results look inconsistent, first confirm the binary path and the `build:` line.
