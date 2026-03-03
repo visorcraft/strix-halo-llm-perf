@@ -631,3 +631,55 @@ RPC server on Evo: `build-rpc-hip` binary, host ROCm 6.4.2, `10.10.25.1:50052`.
 ### Decision
 
 Switched all IdleHands runtime configurations to use `rocm7-nightlies` container via `pick.sh` backend selector script (see `scripts/pick.sh`).
+
+## 2026-03-03 — Full Backend Comparison: Qwen3-Coder-Next Q6_K_XL
+
+Fresh benchmarks on Bee (single host) comparing **all available backends** (ROCm + Vulkan) after updating llama.cpp to `53f151590` (visorcraft fork, merged upstream through b8192) and recreating all kyuz0 toolbox distrobox containers from freshly pulled images.
+
+**Model:** Qwen3-Coder-Next UD Q6_K_XL (63.87 GiB, 79.67B params, MoE 80B-A3B)
+**Host:** Bee (Beelink GTR9 Pro, Ryzen AI Max+ 395, 128 GB)
+**Benchmark:** `llama-bench -m <model> --n-gpu-layers 99 -p 512 -n 128 -r 3` (ROCm: `-fa 1 -mmp 0 -ub 2048 -ctk q4_0 -ctv q4_0`)
+**Container builds:** kyuz0 `137435ff` (8192); host native Vulkan: `f0603802` (8163)
+
+### Single Host Results
+
+| Backend | ROCm/Vulkan Version | Build | pp512 (t/s) | tg128 (t/s) |
+|---|---|---|---:|---:|
+| Host (build-rpc-hip-v2) | ROCm 6.4.2 (HIP 6.4) | 53f151590 (105) | 494.97 ± 13.79 | 31.65 ± 0.00 |
+| Container (kyuz0) | ROCm 6.4.4 | 137435ff (8192) | 460.51 ± 59.30 | 31.58 ± 0.01 |
+| **Container (kyuz0)** | **ROCm 7.2** | **137435ff (8192)** | **501.32 ± 0.97** | **32.69 ± 0.00** |
+| **Container (kyuz0)** | **ROCm 7.0 nightlies** | **137435ff (8192)** | **501.71 ± 5.53** | **32.78 ± 0.01** |
+| Container (kyuz0) | Vulkan RADV (Mesa) | 137435ff (8192) | 448.32 ± 3.35 | 34.03 ± 0.13 |
+| Container (kyuz0) | **Vulkan AMDVLK** | 137435ff (8192) | 358.27 ± 1.52 | **38.65 ± 0.04** |
+| Host native | Vulkan RADV (Mesa) | f0603802 (8163) | 467.97 ± 0.44 | 36.80 ± 0.03 |
+
+### Analysis
+
+- **AMDVLK is the new tg champion** for Q6_K_XL: **38.65 t/s** — a surprise reversal from Feb 25 when AMDVLK was not recommended
+- **Host native Vulkan RADV** also shows strong tg at **36.80 t/s**, +15% over ROCm 7.x (32.78)
+- **Vulkan RADV container** at 34.03 t/s — also beats all ROCm backends on tg
+- **ROCm 7.x still leads prompt processing** at ~501 t/s vs Vulkan RADV ~448–468 t/s
+- **AMDVLK has the worst pp** at 358 t/s — a clear tradeoff (best tg, worst pp)
+- **ROCm 6.4.x is now clearly behind** on both pp and tg compared to 7.x
+- **Container vs host native Vulkan RADV:** host native wins on both pp (468 vs 448) and tg (36.8 vs 34.0)
+
+### Key Changes vs Feb 25
+
+| Metric | Feb 25 Best | Mar 3 Best | Change |
+|---|---|---|---|
+| Best tg (single host) | ROCm 7.x nightlies (33.26) | Vulkan AMDVLK (38.65) | **+16.2%** |
+| Best pp (single host) | Host ROCm 6.4.2 (496.38) | ROCm 7.x nightlies (501.71) | +1.1% |
+
+### Backend Rankings (tg128, single host)
+
+1. **Vulkan AMDVLK** — 38.65 t/s 🥇
+2. **Host Vulkan RADV** — 36.80 t/s 🥈
+3. **Container Vulkan RADV** — 34.03 t/s 🥉
+4. ROCm 7.0 nightlies — 32.78 t/s
+5. ROCm 7.2 — 32.69 t/s
+6. Host ROCm 6.4.2 — 31.65 t/s
+7. ROCm 6.4.4 — 31.58 t/s
+
+### Decision
+
+AMDVLK's tg lead is significant (+16% over ROCm 7.x), but its pp penalty (~30% slower) makes it suboptimal for mixed workloads. For **interactive serving** (tg-dominated), AMDVLK or host native Vulkan RADV are now the recommended backends. For **batch/prefill-heavy** workloads, ROCm 7.x nightlies remains best.

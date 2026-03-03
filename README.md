@@ -86,15 +86,15 @@ Winners-only view:
 
 | Model | Best Prompt Processing (pp) | Best Generation (tg) |
 |---|---|---|
-| Qwen3-Coder-Next Q6_K_XL (single host) | Host ROCm 6.4.2 (~496 pp) | ROCm 7.x container (~33.3 tg) |
+| Qwen3-Coder-Next Q6_K_XL (single host) | ROCm 7.x nightlies (~502 pp) | **Vulkan AMDVLK (~38.7 tg)** |
 | Qwen3-Coder-Next Q6_K_XL (RPC 2-host) | ROCm 7.0 nightlies (~490 pp) | ROCm 7.x container (~26.3 tg) |
 | Qwen3-Coder-Next 80B-A3B Q4_K_M | ROCm 6.4.4 (~581 pp) | Vulkan RADV (~43.5 tg) |
 | MiniMax M2.5 Q3_K_M | ROCm 6.4.4/7.x (~214 pp) | Vulkan RADV (~34.3 tg) |
 | Qwen3 30B-A3B MoE Q4_K_M | Vulkan RADV | Vulkan RADV |
 
-**Latest finding (Feb 25, 2026):** ROCm 7.x containers provide **+4% tg** over ROCm 6.4.x for Qwen3-Coder-Next Q6_K_XL. All production runtimes switched to `rocm7-nightlies` via `scripts/pick.sh`.
+**Latest finding (Mar 3, 2026):** Full 7-backend comparison for Q6_K_XL reveals **Vulkan AMDVLK** is the new tg champion at **38.65 t/s** (+16% over ROCm 7.x), though it has the worst pp (358 t/s). Host native Vulkan RADV is also strong at **36.80 tg**. ROCm 7.x nightlies remains best for prompt processing (~502 pp).
 
-Practical takeaway: **ROCm 7.x nightlies is the best all-round backend for HIP models.** Vulkan RADV remains competitive for Q4_K_M quants.
+Practical takeaway: **For interactive serving (tg-dominated), Vulkan AMDVLK or host RADV are best. For batch/prefill workloads, ROCm 7.x nightlies remains optimal.**
 
 ## 6) Distributed Inference (Evo + Bee RPC)
 
@@ -134,7 +134,7 @@ Practical takeaway: **ROCm 7.x nightlies is the best all-round backend for HIP m
 ## 8) Known Issues
 
 - **RPC serving requires `-dio`** for large-model loads with `--rpc` on this platform (`llama-server` / `llama-cli`).
-- **AMDVLK is currently not a recommended path** on gfx1151 in this project; RADV is the default Vulkan path.
+- **AMDVLK update (Mar 2026):** AMDVLK now leads on tg for Q6_K_XL (38.65 t/s) but has significantly worse pp (358 t/s). Consider for tg-dominated interactive workloads; RADV remains the safer all-round Vulkan path.
 - **HIP cold-run penalty exists:** first HIP run after fresh build can be significantly slower; warm up before recording data.
 
 ## 9) Community Resources
