@@ -155,6 +155,7 @@ Results are broadly aligned with community trends: backend wins vary by metric/m
 - [SETUP.md](SETUP.md) — reproducible machine setup
 - [docs/rpc-build.md](docs/rpc-build.md) — distributed Vulkan RPC build flow
 - [docs/rpc-hip-serving.md](docs/rpc-hip-serving.md) — RPC HIP serving guide (`-dio` requirement)
+- [docs/build-visorcraft-llama.md](docs/build-visorcraft-llama.md) — build and verify visorcraft/llama.cpp on host + containers
 
 ## 11) Repo Hygiene / Sanitization
 
