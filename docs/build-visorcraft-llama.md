@@ -128,3 +128,64 @@ Different binary paths can point to different source trees/builds.
 - Current host-native path: `~/llama.cpp/build-rpc-hip-v2/...` (current build id)
 
 If results look inconsistent, first confirm the binary path and the `build:` line.
+
+---
+
+## 8) Exact setup to reproduce ~467 pp / ~36.8 tg (Vulkan RADV, Mesa)
+
+Those numbers are **Vulkan RADV** numbers, not HIP numbers.
+
+Two equivalent ways to reproduce:
+
+### A) kyuz0 RADV container + visorcraft binary (recommended reproducibility)
+
+Build (inside container, using your synced `~/llama.cpp`):
+
+```bash
+podman exec llama-vulkan-radv bash -lc '
+  cd ~/llama.cpp
+  cmake -S . -B build-visor-vulkan-radv \
+    -DGGML_VULKAN=ON \
+    -DLLAMA_BUILD_SERVER=ON \
+    -DCMAKE_BUILD_TYPE=Release
+  cmake --build build-visor-vulkan-radv --config Release -j "$(nproc)"
+'
+```
+
+Benchmark:
+
+```bash
+podman exec llama-vulkan-radv bash -lc '
+  ~/llama.cpp/build-visor-vulkan-radv/bin/llama-bench \
+    -m ~/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
+    --n-gpu-layers 99 -p 512 -n 128 -r 3
+'
+```
+
+Expected class of result:
+- `pp512` around **467 t/s**
+- `tg128` around **36.7–36.8 t/s**
+
+### B) host-native RADV build
+
+```bash
+cd ~/llama.cpp
+cmake -S . -B build-visor-vulkan-host \
+  -DGGML_VULKAN=ON \
+  -DLLAMA_BUILD_SERVER=ON \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build-visor-vulkan-host --config Release -j "$(nproc)"
+
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json \
+VK_LOADER_LAYERS_DISABLE=all \
+~/llama.cpp/build-visor-vulkan-host/bin/llama-bench \
+  -m ~/models/Qwen3-Coder-Next-UD-Q6_K_XL/Qwen3-Coder-Next-UD-Q6_K_XL-00001-of-00003.gguf \
+  --n-gpu-layers 99 -p 512 -n 128 -r 3
+```
+
+---
+
+## 9) Mapping guide sections to benchmark families
+
+- Sections 3–5 (**HIP RPC build/server**) => long-context serving workflow (`build-rpc-hip-v2`)
+- Section 8 (**Vulkan RADV**) => the ~467 pp / ~36.8 tg benchmark workflow
