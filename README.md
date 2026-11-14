@@ -143,6 +143,7 @@ Practical takeaway: **For interactive serving (tg-dominated), Vulkan AMDVLK or h
 - [kyuz0 interactive benchmark viewer](https://kyuz0.github.io/amd-strix-halo-toolboxes/)
 - [lhl/strix-halo-testing](https://github.com/lhl/strix-halo-testing)
 - [Strix Halo Wiki](https://strixhalo.wiki)
+- [Strix Halo Guide](https://github.com/hogeheer499-commits/strix-halo-guide) — reproducible setup, structured benchmark claims, raw evidence, failed paths, and cross-system community results
 
 ### Brief comparison vs kyuz0
 
